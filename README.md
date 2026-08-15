@@ -7,13 +7,16 @@ vibes.
 ## The problem
 
 Coding agents route almost everything to the most expensive model available,
-by default and by habit. A widely-referenced Claude Code feature request
-([anthropics/claude-code#27665](https://github.com/anthropics/claude-code/issues/27665))
-found that 93.8% of Max-subscriber tokens go to the top-tier model, with no
-automatic optimization pulling cheap, mechanical work down to a cheaper one.
-That's not a Claude Code problem specifically — it's what happens by default
-in any agent that lets you pick a model once per session instead of once per
-unit of work.
+by default and by habit. In an open Claude Code feature request
+([anthropics/claude-code#27665](https://github.com/anthropics/claude-code/issues/27665)),
+one Max subscriber posted self-reported `ccusage` data showing 93.8% of their
+tokens went to the top-tier model, with no automatic optimization pulling
+cheap, mechanical work down to a cheaper one. That's a single user's local
+usage stats, not a measured audit — but the issue has stayed open with real
+engagement (20+ reactions, 30+ related issues), which suggests the pattern
+isn't unique to one account. That's not a Claude Code problem specifically —
+it's what happens by default in any agent that lets you pick a model once per
+session instead of once per unit of work.
 
 The obvious fix — "ask the model how confident it is, route on that" —
 doesn't work. Self-reported model confidence is poorly calibrated. A model
