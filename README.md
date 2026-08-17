@@ -64,6 +64,40 @@ cheap ──fail x2──▶ standard ──fail x2──▶ frontier ──unre
  done                 done                  done      start here
 ```
 
+## Worked example (illustrative)
+
+What this buys in practice, on a made-up batch. Not a benchmark — just the
+arithmetic of the ladder against roughly plausible per-token prices.
+
+A 700-unit job: tag every file in a repo as "source" or "build artifact".
+Almost all of it is mechanical and cheap-to-verify — a grep-count or a schema
+check decides it. Numbers below are illustrative round-trip prices
+(1M in + 1M out) for the tiers in `models.md`, not a price quote.
+
+| Tier | Model class | Illustrative price per unit run |
+|---|---|---|
+| cheap | `claude-haiku-4-5`-class | $0.003 |
+| standard | `claude-sonnet-5`-class | $0.02 |
+| frontier | `claude-opus-5`-class | $0.09 |
+
+Run the skill on the batch:
+
+- **690 units** are cheap-verifiable → start on **cheap**. $2.07.
+- **10 units** touch auth/user data (BLAST flag) → start on **standard**. $0.20.
+- Cheap tier fails verification ×2 on **6 of the 690** (say, hand-written files
+  that look like build output) → escalate the **residue only** to standard. $0.12.
+- The 10 standard units pass; the 6 escalated ones pass on standard.
+- Nothing needs frontier. No apex call.
+
+Total: **≈$2.39**. Every unit routed at the cheapest tier that could pass
+verification; only 6 items (0.9%) ever moved up, and the higher tier saw only
+those 6, not the batch.
+
+Routing the same batch entirely on **standard** costs 700 × $0.02 = **$14** —
+~6× more, for output of the same correctness. Routing on **frontier** "to be
+safe" costs **$63**. The savings come almost entirely from the cheap-to-verify
+⇒ cheap-to-generate override, not from the escalation ladder itself.
+
 ## Install
 
 Via [skills.sh](https://skills.sh):
