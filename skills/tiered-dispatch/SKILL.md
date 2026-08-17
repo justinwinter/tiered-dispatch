@@ -87,8 +87,8 @@ the batch.
 ```
 OUTPUT CONTRACT:
 - Return raw structured data per the schema below, no prose wrapper.
-- Tag EVERY item: `confidence: confident` or
-  `confidence: uncertain, reason: <one line — what fact or rule is missing>`.
+- Tag EVERY item: `status: grounded` or
+  `status: uncertain, reason: <one line — what fact or rule is missing>`.
 - Tag `uncertain` whenever two answers seem defensible, an assumption was
   required, or source data conflicted. Uncertain is cheap; wrong is expensive.
 - Do NOT resolve uncertainty by guessing. Flag and move on.
@@ -139,7 +139,7 @@ const TIERS = ['claude-haiku-4-5', 'claude-sonnet-5', 'claude-opus-5']
 const results = await pipeline(
   units,
   u => agent(workPrompt(u), { model: baseTier(u), schema: ITEM_SCHEMA }),
-  (r, u) => r.confidence === 'confident'
+  (r, u) => r.status === 'grounded'
     ? agent(verifyPrompt(r, u), { model: 'claude-haiku-4-5', schema: VERDICT }).then(v => ({...r, v}))
     : ({...r, v: { pass: false, reason: r.uncertainty_reason }}),
 )
