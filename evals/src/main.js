@@ -24,6 +24,7 @@ function parseArgs(argv) {
       case '--vendors': a.vendors = argv[++i].split(','); break;
       case '--arms': a.arms = argv[++i].split(','); break;
       case '--suites': a.suites = argv[++i].split(','); break;
+      case '--concurrency': a.concurrency = Number(argv[++i]); break;
     }
   }
   return a;
@@ -65,19 +66,28 @@ async function main() {
   const suites = args.suites ? args.suites : Object.keys(SUITES);
   const seeds = args.smoke ? 1 : args.seeds ?? DEFAULT_SEEDS;
 
+  // Smoke test = plumbing proof, not results. 1 seed, 1 vendor, 1 suite,
+  // no frontier arm (frontier reasoning models are minutes-per-call).
+  const smokeVendor = 'anthropic';
+  const smokeArms = ['all-standard', 'tiered'];
+  const smokeSuite = 'code';
+  const smokeVendors = args.smoke && !args.vendors ? [smokeVendor] : vendors;
+  const smokeArmsFinal = args.smoke && !args.arms ? smokeArms : arms;
+  const smokeSuites = args.smoke && !args.suites ? [smokeSuite] : suites;
+
   console.log(`\nTiered-dispatch eval run`);
   console.log(`  mode:      ${args.mock ? 'MOCK (no spend)' : 'LIVE (OpenRouter)'}`);
-  console.log(`  vendors:   ${vendors.join(', ')}`);
-  console.log(`  arms:      ${arms.join(', ')}`);
-  console.log(`  suites:    ${suites.join(', ')}`);
+  console.log(`  vendors:   ${smokeVendors.join(', ')}`);
+  console.log(`  arms:      ${smokeArmsFinal.join(', ')}`);
+  console.log(`  suites:    ${smokeSuites.join(', ')}`);
   console.log(`  seeds:     ${seeds}`);
 
   const results = {};
-  for (const vendor of vendors) {
+  for (const vendor of smokeVendors) {
     results[vendor] = {};
-    for (const arm of arms) {
+    for (const arm of smokeArmsFinal) {
       results[vendor][arm] = {};
-      for (const suite of suites) {
+      for (const suite of smokeSuites) {
         const attempt = args.mock
           ? mockAttempter()
           : makeAttempter({ model: VENDORS[vendor], runMeta: { temperature: 0.2 } });
@@ -92,13 +102,14 @@ async function main() {
           apexChat,
           apexModel: VENDORS[vendor].tiers.apex,
           seeds,
+          concurrency: args.concurrency ?? 8,
         });
         results[vendor][arm][suite] = units;
       }
     }
   }
 
-  printReport(results, { vendors, arms, suites, seeds, mock: args.mock });
+  printReport(results, { vendors: smokeVendors, arms: smokeArmsFinal, suites: smokeSuites, seeds, mock: args.mock });
 }
 
 function printReport(results, { vendors, arms, suites, seeds, mock }) {

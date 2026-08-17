@@ -6,6 +6,7 @@ const OPENROUTER_URL = 'https://openrouter.ai/api/v1';
 const API_KEY = process.env.OPENROUTER_API_KEY || '';
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1000;
+const REQUEST_TIMEOUT_MS = 120000;
 
 export class LLMError extends Error {}
 
@@ -22,29 +23,61 @@ async function rawCall(model, messages, { temperature = 0.2, maxTokens = 2048 })
   let lastErr;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
-      const res = await fetch(`${OPENROUTER_URL}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${API_KEY}`,
-          'X-Title': 'tiered-dispatch-evals',
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          temperature,
-          max_tokens: maxTokens,
-          response_format: { type: 'json_object' },
-        }),
-      });
+      const body = {
+        model,
+        messages,
+        temperature,
+        max_tokens: maxTokens,
+        // JSON mode is required for the worker contract, but not every
+        // provider supports response_format. On 400 we retry without it and
+        // rely on the prompt contract + our own JSON extraction.
+        response_format: { type: 'json_object' },
+      };
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      let res;
+      try {
+        res = await fetch(`${OPENROUTER_URL}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${API_KEY}`,
+            'X-Title': 'tiered-dispatch-evals',
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+      if (res.status === 400 && String(await res.text().catch(() => '')).includes('response_format')) {
+        // Provider doesn't support structured output — retry without it.
+        const controller2 = new AbortController();
+        const timer2 = setTimeout(() => controller2.abort(), REQUEST_TIMEOUT_MS);
+        try {
+          delete body.response_format;
+          res = await fetch(`${OPENROUTER_URL}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${API_KEY}`,
+              'X-Title': 'tiered-dispatch-evals',
+            },
+            body: JSON.stringify(body),
+            signal: controller2.signal,
+          });
+        } finally {
+          clearTimeout(timer2);
+        }
+      }
       if (!res.ok) {
-        const body = await res.text().catch(() => '');
+        const resBody = await res.text().catch(() => '');
         if (res.status === 429 || res.status >= 500) {
-          lastErr = new LLMError(`HTTP ${res.status}: ${body.slice(0, 200)}`);
+          lastErr = new LLMError(`HTTP ${res.status}: ${resBody.slice(0, 200)}`);
           await sleep(BASE_DELAY_MS * 2 ** attempt);
           continue;
         }
-        throw new LLMError(`HTTP ${res.status}: ${body.slice(0, 200)}`);
+        throw new LLMError(`HTTP ${res.status}: ${resBody.slice(0, 200)}`);
       }
       const data = await res.json();
       const msg = data.choices?.[0]?.message;
@@ -59,7 +92,8 @@ async function rawCall(model, messages, { temperature = 0.2, maxTokens = 2048 })
         },
       };
     } catch (e) {
-      lastErr = e instanceof LLMError ? e : new LLMError(String(e));
+      if (e?.name === 'AbortError') lastErr = new LLMError('request timed out');
+      else lastErr = e instanceof LLMError ? e : new LLMError(String(e));
       await sleep(BASE_DELAY_MS * 2 ** attempt);
     }
   }

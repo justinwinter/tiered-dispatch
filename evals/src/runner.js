@@ -68,14 +68,26 @@ export async function rawApexCall(chatFn, apexModel, residual, runMeta) {
   return { raw: res, byId };
 }
 
+/** Run `n` promises with at most `limit` in flight at once. */
+export async function mapLimit(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i], i);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 /** Run a whole suite under a given arm. */
-export async function runSuite({ arm, vendor, suite, attempt, apexChat, apexModel, seeds = 1 }) {
+export async function runSuite({ arm, vendor, suite, attempt, apexChat, apexModel, seeds = 1, concurrency = 8 }) {
   const perUnit = [];
   for (let seed = 0; seed < seeds; seed++) {
-    const seedUnits = [];
-    for (const task of suite) {
-      seedUnits.push(await runUnitForArm(arm, task, attempt));
-    }
+    // Run all tasks in the seed concurrently (bounded) — the dominant speedup.
+    const seedUnits = await mapLimit(suite, concurrency, (task) => runUnitForArm(arm, task, attempt));
     // Batched apex: one call resolving ALL residual items across the suite.
     if (arm === 'tiered' && apexChat) {
       const residual = [];

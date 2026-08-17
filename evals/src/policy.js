@@ -39,7 +39,14 @@ export function workerPrompt(task, payload) {
   const extras = payload?.context_refs?.length
     ? `\nContext for decision: ${payload.context_refs.join('; ')}`
     : '';
-  return `${task.prompt}\n\n${extras}\n\n${WORKER_CONTRACT}`;
+  // Category-specific answer guidance. Code workers must return the raw
+  // function source as a plain string — wrapped objects (implementation,
+  // language, explanation) are rejected by the mechanical grader.
+  const categoryNote =
+    task.category === 'code'
+      ? '\nANSWER FORMAT: the "answer" field MUST be the raw JavaScript function source code as a plain string. Do NOT wrap it in an object, do not add explanation. Example: {"status": "grounded", "reason": null, "answer": "function main(arr){ ... }"}'
+      : '';
+  return `${task.prompt}\n\n${extras}\n${categoryNote}\n\n${WORKER_CONTRACT}`;
 }
 
 /** Escalation payload schema (what flows up to a higher tier). */

@@ -1,17 +1,14 @@
 // Model roster for the eval harness.
 //
-// IMPORTANT: these slugs are the *intended* tier mapping per vendor, sourced
-// from August 2026 leaderboard research. Exact OpenRouter slugs change fast.
-// Run `npm run verify-models` to check every slug resolves on OpenRouter
-// before spending money.
+// Slugs verified against the OpenRouter /models endpoint on 2026-08-17.
 
 export const VENDORS = {
   anthropic: {
     label: 'Anthropic',
     tiers: {
-      cheap: 'anthropic/claude-haiku-4-5',
-      standard: 'anthropic/claude-sonnet-4-5',
-      frontier: 'anthropic/claude-opus-4-5',
+      cheap: 'anthropic/claude-haiku-4.5',
+      standard: 'anthropic/claude-sonnet-5',
+      frontier: 'anthropic/claude-opus-5',
       apex: 'anthropic/claude-fable-5',
     },
   },
@@ -19,26 +16,26 @@ export const VENDORS = {
     label: 'OpenAI',
     tiers: {
       cheap: 'openai/gpt-5-nano',
-      standard: 'openai/gpt-5.1-mini',
-      frontier: 'openai/gpt-5.1',
-      apex: 'openai/gpt-5.1-max',
+      standard: 'openai/gpt-5.6-terra',
+      frontier: 'openai/gpt-5.6-sol',
+      apex: 'openai/gpt-5.6-sol-pro',
     },
   },
   gemini: {
     label: 'Google (Gemini)',
     tiers: {
-      cheap: 'google/gemini-3-flash',
-      standard: 'google/gemini-3-pro',
-      frontier: 'google/gemini-3-ultra',
-      apex: 'google/gemini-3-ultra',
+      cheap: 'google/gemini-3.5-flash-lite',
+      standard: 'google/gemini-3.5-flash',
+      frontier: 'google/gemini-3.1-pro-preview',
+      apex: 'google/gemini-3.1-pro-preview',
     },
   },
   openweights: {
     label: 'Open-weight',
     tiers: {
-      cheap: 'qwen/qwen3-coder-30b-a3b',
-      standard: 'deepseek/deepseek-v4-pro',
-      frontier: 'z-ai/glm-5.2',
+      cheap: 'qwen/qwen3-coder-30b-a3b-instruct',
+      standard: 'deepseek/deepseek-v4-flash',
+      frontier: 'deepseek/deepseek-v4-pro',
       apex: 'z-ai/glm-5.2',
     },
   },
