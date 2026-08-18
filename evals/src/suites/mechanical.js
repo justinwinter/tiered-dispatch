@@ -33,7 +33,7 @@ export const mechanicalSuite = [
   ),
   T(
     'semver-sort',
-    'Sort these version strings ascending (standard semver order) and return JSON: {"sorted": [...]}.',
+    'Sort these version strings ascending (standard semver order): "10.0.0", "1.0.0", "1.2.0", "2.0.0", "1.0.1". Return JSON: {"sorted": [...]}.',
     { unverifiable: false, ambiguous: false, blast: false, crossCutting: false, novel: false, formatStrict: true },
     { sorted: ['1.0.0', '1.0.1', '1.2.0', '2.0.0', '10.0.0'] },
   ),
@@ -60,13 +60,13 @@ export const mechanicalSuite = [
   ),
   T(
     'route-methods',
-    'Classify each HTTP method as "safe" (no state change) or "unsafe". Return JSON: {"safe": [...], "unsafe": [...]}.',
+    'Classify each HTTP method as "safe" (no state change) or "unsafe". The methods are: GET, HEAD, OPTIONS, TRACE, POST, PUT, DELETE, PATCH. Return JSON: {"safe": [...], "unsafe": [...]}.',
     { unverifiable: false, ambiguous: false, blast: false, crossCutting: false, novel: false, formatStrict: true },
-    { safe: ['GET', 'HEAD', 'OPTIONS'], unsafe: ['POST', 'PUT', 'DELETE', 'PATCH'] },
+    { safe: ['GET', 'HEAD', 'OPTIONS', 'TRACE'], unsafe: ['POST', 'PUT', 'DELETE', 'PATCH'] },
   ),
   T(
     'json-flatten-keys',
-    'Return JSON: {"keys": [all keys in the nested object, in any order]}. Object: {"a": 1, "b": {"c": 2, "d": {"e": 3}}}.',
+    'Return JSON: {"keys": [every key at every nesting level, in any order]}. Object: {"a": 1, "b": {"c": 2, "d": {"e": 3}}}.',
     { unverifiable: false, ambiguous: false, blast: false, crossCutting: false, novel: false, formatStrict: true },
     { keys: ['a', 'b', 'c', 'd', 'e'] },
   ),

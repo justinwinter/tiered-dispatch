@@ -66,7 +66,7 @@ export const reasoningSuite = [
     'transport',
     'A train leaves station P at 9:00 traveling 60 km/h toward station Q, which is 150 km away. A second train leaves Q at 9:30 traveling 40 km/h toward P. At what time (HH:MM) do they meet?',
     { unverifiable: false, ambiguous: false, blast: false, crossCutting: false, novel: true },
-    '10:24',
+    '10:42',
   ),
   T(
     'syllogism',
