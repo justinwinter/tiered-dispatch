@@ -110,10 +110,10 @@ cheap ──fail x2──▶ standard ──fail x2──▶ frontier ──unre
 ## Install
 
 ```
-npx skills add justinwinter/tiered-dispatch
+npx skills add undercutsh/firstpass
 ```
 
-Or copy `skills/tiered-dispatch/` into your agent's skills directory. Works
+Or copy `skills/firstpass/` into your agent's skills directory. Works
 with Claude Code, Codex, Cursor, Copilot, OpenCode — anything that reads a
 `SKILL.md`.
 
@@ -146,4 +146,4 @@ node src/main.js --compare testing/results/run-a.json testing/results/run-b.json
 
 ---
 
-MIT · founded by [Justin Winter](https://iamjustinwinter.com)
+MIT · founded by [Justin Winter](https://iamjustinwinter.com) · [getundercut.sh](https://getundercut.sh)

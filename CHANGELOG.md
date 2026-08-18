@@ -37,5 +37,5 @@ Initial public release.
 - README documenting the generator–verifier gap, install via skills.sh, prior
   art, and the benchmark-triggered mapping roadmap.
 
-[unreleased]: https://github.com/justinwinter/tiered-dispatch/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/justinwinter/tiered-dispatch/releases/tag/v0.1.0
+[unreleased]: https://github.com/undercutsh/firstpass/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/undercutsh/firstpass/releases/tag/v0.1.0
