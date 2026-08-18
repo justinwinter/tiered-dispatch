@@ -262,13 +262,14 @@ function printComparison(a, b) {
         const sb = sum(ub);
         const dPass = sb.pass - sa.pass;
         const dCost = sb.cost - sa.cost;
+        const pct = sa.cost > 0 ? ((sb.cost - sa.cost) / sa.cost) * 100 : 0;
         rows.push({
           arm,
           a: sa,
           b: sb,
           dPass,
           dCost,
-          delta: `${dPass > 0 ? '+' : ''}${dPass} pass, ${dCost > 0 ? '+' : ''}${dCost.toFixed(4)}$`,
+          delta: `${dPass > 0 ? '+' : ''}${dPass} pass, cost ${pct > 0 ? '+' : ''}${pct.toFixed(0)}%`,
         });
       }
       if (!rows.length) continue;
