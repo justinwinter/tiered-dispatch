@@ -1,7 +1,11 @@
-# tiered-dispatch
+# Undercut
 
-**Run every unit of work at the cheapest model that can pass verification.**
+**Undercut the top-tier model. Never the quality bar.**
+
+Run every unit of work at the cheapest model that can pass verification.
 Escalate on evidence, not vibes.
+
+> The install slug is `tiered-dispatch`; the product is **Undercut**.
 
 Measured, not promised: **up to −95% cost on public benchmarks, equal-or-better
 quality, across 4 model families.** Every number below is reproducible from the
@@ -142,4 +146,4 @@ node src/main.js --compare testing/results/run-a.json testing/results/run-b.json
 
 ---
 
-MIT · by [Justin Winter](https://iamjustinwinter.com)
+MIT · founded by [Justin Winter](https://iamjustinwinter.com)
