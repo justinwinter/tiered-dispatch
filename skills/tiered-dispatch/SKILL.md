@@ -28,7 +28,7 @@ actual model IDs for your agent (Claude Code, Codex, Cursor, or other) via
 
 ## Step 1 — Base tier assignment (rubric, not vibes)
 
-Score each unit of work on five flags:
+Score each unit of work on six flags:
 
 | Flag | Question | Flag it when… |
 |---|---|---|
@@ -37,6 +37,7 @@ Score each unit of work on five flags:
 | BLAST | Reversible? Touches money / auth / user data / production / deletes? | irreversible or sensitive |
 | CROSS-CUTTING | One file/source, or reasoning across many? | many |
 | NOVEL | Pattern-following, or genuinely new design? | new design |
+| FORMAT-STRICT | Output must match an exact schema/format (structured JSON, specific keys)? | free-form output fails |
 
 Mapping (resolve tier names to actual models via `models.md`):
 
@@ -52,6 +53,14 @@ verified mechanically, assign the LOWEST tier regardless of how hard it looks,
 and let verification catch failure. Only unverifiable work needs to *start*
 high. This is the generator–verifier gap and it is the single biggest token
 saver in this system.
+
+**FORMAT-STRICT still starts cheap (probe principle).** Format-constrained
+work is verifiable, so it starts at the cheapest tier and lets verification
+decide — do NOT preemptively route it to standard. Cheap models' format skill
+varies wildly by model family (evaluated 2026-08: Anthropic Haiku struggles
+with strict JSON, Google flash-lite nails it), so a hardcoded "format →
+standard" rule over-pays on half the vendors. Start cheap, escalate only on
+failure. This keeps the rule model-agnostic and immune to model-card churn.
 
 ## Step 2 — Escalation triggers (the "confidence threshold", made objective)
 
@@ -76,11 +85,25 @@ the batch.
 - Never de-escalate mid-task. standard inherited it → stays standard-or-up.
 - Max ONE retry per tier. cheap fails twice → standard gets one shot →
   frontier.
-- Ladder cap: everything unresolved after frontier goes to a SINGLE batched
-  apex tie-break agent (one call, all residual items), never per-item apex
-  calls.
+- **Ladder cap: FORMAT-STRICT work caps at standard — it never escalates to
+  frontier.** Evaluated 2026-08: the frontier tier is *worse* than standard on
+  format-constrained output (Claude Opus 35/50 vs Sonnet 42/50 on mechanical
+  work) — paying more buys worse schema compliance. Its residue goes straight
+  to the batched apex tie-break. (The cap is on the *tier*, derived from the
+  work's properties — not a per-vendor model card, which would go stale.)
+- Ladder cap: everything unresolved after the per-work cap goes to a SINGLE
+  batched apex tie-break agent (one call, all residual items), never per-item
+  apex calls.
 - Escalation is per-unit, not per-batch: one hard file doesn't drag 699 easy
   ones up a tier.
+
+**Flags steer; verification + escalation decide.** The rubric flags pick a
+cheap starting point, but a wrong flag is absorbed by the ladder: mis-route a
+cheap-able unit to standard and you waste one attempt's cost; mis-route it to
+cheap and verification fails and it escalates. Evaluated 2026-08: a dispatcher
+model reproduced only 90% of ground-truth flags (60% on FORMAT-STRICT) yet
+still routed 100% of units to the correct tier under this design. No custom
+flagging model is required — the escalator is the safety net.
 
 ## Worker prompt template (append to every dispatched unit)
 
@@ -135,7 +158,7 @@ not the literal model strings.
 ```js
 // per-unit: assign → attempt → verify → escalate residue
 // tier names below are Claude Code models; resolve via models.md for other agents
-const TIERS = ['claude-haiku-4-5', 'claude-sonnet-5', 'claude-opus-5']
+const TIERS = ['claude-haiku-4.5', 'claude-sonnet-5', 'claude-opus-5']
 const results = await pipeline(
   units,
   u => agent(workPrompt(u), { model: baseTier(u), schema: ITEM_SCHEMA }),
@@ -169,4 +192,7 @@ The rubric is the product; the runs are its training data.
 - Dual-running mechanical work (2× cost, no information gained).
 - Starting frontier/apex "to be safe" on work with a mechanical check — the
   check IS the safety.
+- Preemptively routing FORMAT-STRICT work to standard because "cheap can't do
+  JSON" — cheap's format skill varies by model family; let verification decide
+  (probe principle).
 - Per-item calls to the top tier. Batch the residue.

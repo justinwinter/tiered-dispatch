@@ -6,6 +6,21 @@ All notable changes to tiered-dispatch are documented here. Follows
 
 ## [Unreleased]
 
+### Added
+
+- Controlled A/B eval harness (`evals/`) — vendor-constant, deterministic
+  graders, seeded, persistable results, policy versioning, flagging-reliability
+  test.
+- `RESULTS.md` — methodology + full 4-vendor evaluation write-up.
+- **probe policy**: FORMAT-STRICT work starts cheap (model-agnostic) and caps
+  at standard. Replaces the vendor-specific "format → standard" rule.
+
+### Changed
+
+- SKILL.md: FORMAT-STRICT added as 6th rubric flag; ladder cap for
+  format-strict work at standard; documented "flags steer, verification +
+  escalation decide" property.
+
 ## [0.1.0] - 2026-08-15
 
 Initial public release.
