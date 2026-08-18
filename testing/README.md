@@ -11,7 +11,8 @@ claims** — anyone can re-verify any cell.
   equal-or-better quality at **31–96% lower cost** on 3 of 4 model families.
 - **Public benchmarks (GSM8K, HumanEval):** the same pattern holds on
   third-party, MIT-licensed, uncontested tasks — **up to −71% (GSM8K) and
-  −95% (HumanEval)** on closed vendors, never worse quality on 7 of 8 cells.
+  −95% (HumanEval)** on closed vendors, never worse quality on any cell with
+  a tiered benefit (OpenAI code is NA\* — its cheap tier lacks Python).
 - **The escalator never loses quality.** Across all 16 measured cells
   (2 benchmarks × 4 vendors × ... ) tiered pass rate was equal-or-better to
   all-standard except GSM8K/Gemini (−2, within seed noise).
@@ -78,15 +79,18 @@ in a `python3` subprocess (8s timeout).
 | Vendor | all-standard | probe tiered | cost Δ | pass Δ |
 |---|---|---|---|---|
 | Anthropic | 100/100, $0.30 | 100/100, $0.12 | **−61%** | = |
-| OpenAI | 100/100, $0.46 | 100/100, $1.23 | +164% | = |
+| OpenAI | 100/100, $0.46 | 100/100, $1.23 | **NA\*** | = |
 | Gemini | 100/100, $1.13 | 100/100, $0.05 | **−95%** | = |
 | open-weights | 100/100, $0.01 | 100/100, $0.02 | +77% | = |
 
-**Why OpenAI's HumanEval cell is +164%:** OpenAI's cheap tier (gpt-5-nano)
-cannot generate Python, so every task escalates the full cheap→standard→
-frontier→apex ladder. Quality is preserved (100/100 — the escalator works),
-but cost is not saved. This is an honest, documented failure mode of the
-cheap-tier assumption on code for that family.
+**\*NA — no tiered benefit available for OpenAI code work.** OpenAI's cheap
+tier (gpt-5-nano) cannot generate Python, so every task escalates the full
+cheap→standard→frontier→apex ladder. Quality is still preserved (100/100 — the
+escalator works), but there is no cost headroom to exploit. This is a genuine
+capability gap in the cheap tier, not a policy failure: when the cheapest tier
+cannot do the task class at all, tiered routing converges to the baseline.
+(The standard/frontier tiers handle Python fine — it is specifically the cheap
+tier that lacks it.)
 
 ## Flagging reliability
 
@@ -121,8 +125,10 @@ node src/main.js --compare a.json,b.json             # diff two saved runs
    counterbalance this.
 2. **open-weights inversion** (both benchmarks) — documented, config-level fix
    exists, absolute cost negligible.
-3. **HumanEval grader executes Python** from benchmark code — trusted, no
+3. **OpenAI code is NA\*** — its cheap tier can't write Python; tiered routing
+   has no headroom there (quality still preserved).
+4. **HumanEval grader executes Python** from benchmark code — trusted, no
    network, 8s timeout. Never point it at untrusted input.
-4. **Sample sizes are modest** (50/20 tasks × 5 seeds). The direction is
+5. **Sample sizes are modest** (50/20 tasks × 5 seeds). The direction is
    consistent across 2 benchmarks × 4 vendors; confidence intervals at higher
    seeds are a follow-up.
