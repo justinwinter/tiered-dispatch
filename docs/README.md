@@ -24,17 +24,22 @@ first.
 
 ## House rules (so multiple threads don't collide)
 
+> **The 3-second sync check + guardrails are in [`SYNC.md`](../SYNC.md) at
+> the repo root.** Run that check before doing any work. Highlights:
+
 1. **Read before you act.** If your task touches strategy, pricing, or
    roadmap, check the relevant doc first — another thread may have moved it.
 2. **One source of truth.** Don't keep a second copy of a plan on your
    Desktop or in a scratch file. Update the doc in this folder.
 3. **Branch → PR → squash-merge.** Commit doc changes to a branch and PR it,
-   like code. Never force-push.
+   like code. Never force-push (main is branch-protected anyway).
 4. **Re-fetch before acting.** `git fetch` + check `origin/main` before
    editing — the shared repo moves.
 5. **Trust backlog** is separate: `testing/trust-backlog.md` (what trust
    signals we've *earned* vs *plan to earn*). Don't mix "we plan to" with
    "we have."
+6. **Inter-session messages are pointers, not truth.** Verify shas / file
+   listings against the remote before acting on them.
 
 ## Link from the main README?
 
