@@ -84,6 +84,7 @@ test:
 |---|---|
 | `v1` | original rubric: any mechanically verifiable task starts cheap; ladder caps at frontier |
 | `latest` | round 1–3 findings: `formatStrict` tasks start at standard and cap at standard (frontier is *worse* on format-constrained output) |
+| `probe` | round 5 finding: formatStrict was vendor-specific (Gemini cheap formats better than Anthropic Haiku), so it STARTs cheap (cheap proves itself) but CAPs at standard. Adaptive, model-agnostic |
 
 Every live run persists a JSON snapshot to `evals/results/` (gitignored).
 `--compare` diffs two snapshots (pass/cost/`$/pass` per vendor·arm·suite)

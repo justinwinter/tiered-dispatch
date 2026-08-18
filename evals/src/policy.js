@@ -24,9 +24,16 @@ export function countFlags(task) {
  *           death-spirals on strict schema output) and CAP at standard
  *           (frontier is *worse* than standard on format-constrained work:
  *           Opus 5 35/50 vs Sonnet 5 42/50 on mechanical).
+ * probe   — round 5 cross-vendor finding: formatStrict rules are
+ *           vendor-dependent (Gemini's cheap model formats better than
+ *           Anthropic's Haiku, so forcing standard wasted 17x). So formatStrict
+ *           tasks START cheap (let the cheap tier prove itself) but CAP at
+ *           standard (never spend frontier on format work). Adaptive: cheap
+ *           passes → cheapest; cheap fails → standard, then batched apex.
  */
 export function createPolicy(version = 'latest') {
   const isV1 = version === 'v1';
+  const isProbe = version === 'probe';
 
   const capTier = (task) =>
     !isV1 && task.flags.formatStrict
@@ -34,8 +41,9 @@ export function createPolicy(version = 'latest') {
       : TIER_ORDER[TIER_ORDER.length - 2];
 
   const baseTier = (task) => {
-    // formatStrict ⇒ standard base (latest only).
-    if (!isV1 && task.flags.formatStrict) return 'standard';
+    // latest only: formatStrict ⇒ standard base (hardcoded rule that proved
+    // vendor-specific and was REJECTED in round 5 — probe restores cheap-first).
+    if (!isV1 && !isProbe && task.flags.formatStrict) return 'standard';
 
     // Override: cheap-to-verify ⇒ cheap-to-generate. If output is
     // mechanically verifiable AND free-form (exec or exact-match), assign the
