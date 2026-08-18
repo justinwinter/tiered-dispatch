@@ -1,0 +1,480 @@
+================================================================================
+TIERED-DISPATCH — RESEARCH & COPYWRITING DATA DUMP
+================================================================================
+Purpose: raw research material for a landing page + full marketing/copy
+exercise. Grounded in real, measured results from the project's own A/B
+evaluation harness. Every claim below is either (a) a measured result with
+backing data, or (b) explicitly flagged as opinion/strategy. Do not invent
+numbers beyond what is here; where a number is missing, it is missing on
+purpose and should be left out rather than fabricated.
+
+Author/project: Justin Winter — undercutsh/firstpass (GitHub, public). Brand: Undercut. Site: getundercut.sh
+License: MIT. Distribution: skills.sh + direct copy of a SKILL.md folder.
+Repo: https://github.com/undercutsh/firstpass (brand: Undercut; domain: getundercut.sh)
+
+================================================================================
+0. ONE-PARAGRAPH SUMMARY (the "what is this" that sells)
+================================================================================
+
+tiered-dispatch is an open-source skill for coding agents (Claude Code,
+Codex, Cursor, Copilot, OpenCode — anything that reads a SKILL.md) that runs
+every unit of work at the CHEAPEST model tier that can pass verification, and
+escalates to a more expensive tier ONLY on objective evidence (a failed
+check, a measured disagreement, an explicit uncertainty flag) — never on a
+model's self-reported confidence. It is model-agnostic and vendor-agnostic:
+the same rubric + escalation ladder works across Anthropic, OpenAI, Google,
+and open-weight models. We A/B-tested it against "one model for everything"
+on public, MIT-licensed benchmarks (GSM8K math reasoning and HumanEval Python
+code, graded against their OFFICIAL test cases) and measured cost reductions
+of up to −95% at equal-or-better quality. The raw result files are published
+in the repo; every cell is reproducible.
+
+================================================================================
+1. THE SPACE / PROBLEM (market context)
+================================================================================
+
+1.1 The core problem
+- Coding agents (Claude Code, Codex, Cursor, Copilot) let you pick a model
+  once per SESSION, so they route almost everything — including trivial,
+  mechanical work — to the most expensive model available, by default and by
+  habit.
+- The user pays for the highest tier even when a cheap model could pass.
+
+1.2 Evidence this is real
+- Anthropic Claude Code feature request #27665
+  (https://github.com/anthropics/claude-code/issues/27665): a Max subscriber
+  posted self-reported `ccusage` data showing 93.8% of their tokens went to
+  the top-tier model, with no automatic optimization pulling cheap mechanical
+  work down. IMPORTANT HONESTY NOTE: this is ONE user's self-reported local
+  usage stats, NOT a measured audit. But the issue has stayed open with real
+  engagement (20+ reactions, 30+ related issues), which suggests the pattern
+  isn't unique to one account. Use carefully in copy: it's a signal, not a
+  stat. If you cite 93.8%, attribute it as "one Claude Code Max user's
+  self-reported usage" — do not present it as an industry measurement.
+- No major agent ships per-unit-of-work model routing today. Model selection
+  is per-session, per-project, or manual.
+
+1.3 Why the obvious fix fails (the hook for the product)
+- The naive fix is "ask the model how confident it is, route on that." It
+  doesn't work: LLM self-reported confidence is poorly calibrated. A model
+  that is wrong is frequently just as "confident" as one that is right.
+  Thresholding a confidence score buys the FEELING of a safety check without
+  the substance.
+- tiered-dispatch replaces that with OBJECTIVE triggers: failed verification,
+  measured low-tier disagreement, explicit uncertainty flags.
+
+1.4 Why NOW (timing narrative)
+- 2026: multiple frontier-class models (Claude Opus 5, GPT-5.6 Sol, Google
+  Gemini) make the top tier expensive but widely used; cheap tiers (Haiku /
+  nano / flash / small open-weight models) are now competent on mechanical and
+  most routine work. The gap between "top tier cost" and "cheap tier cost"
+  has widened exactly as cheap models got good enough to do the routine work.
+- The agentic-engineering community (arXiv 2606.17799, "Coding Benchmarks Are
+  Misaligned with Agentic Software Engineering", July 2026) is actively
+  discussing how harness/routing choices swing model scores 15-20 points. The
+  conversation is ready for "routing policy is the untapped lever."
+
+1.5 Prior art (be honest, position as "improvement")
+- peragwin's subagent-model-routing gist: assigning cheaper models to subagent
+  work (early exploration).
+- soumabali/token-router (GitHub): cheaper-model routing for subagents.
+- tiered-dispatch's contribution on top: the OBJECTIVE ESCALATION LOOP —
+  measured disagreement instead of self-reported confidence; hysteresis so a
+  run can't thrash between tiers; residue-only escalation with a structured
+  handoff payload; a calibration feedback loop; AND (unique) published,
+  reproducible A/B results proving it works.
+
+================================================================================
+2. THE SOLUTION — WHAT IT DOES
+================================================================================
+
+2.1 What it is
+- A SKILL.md (skills.sh-compatible, MIT) that the orchestrating agent follows
+  at dispatch time. Works anywhere a SKILL.md is read: Claude Code, Codex,
+  Cursor, Copilot, OpenCode.
+- Four generic tiers (not vendor-specific): cheap → standard → frontier →
+  apex (apex optional). Tier names resolve to actual model IDs via a separate
+  models.md mapping file.
+
+2.2 The mechanism
+- STEP 1 — Base tier assignment via a 6-flag rubric (score each unit of work):
+    1. UNVERIFIABLE — can output be checked mechanically (tests, schema,
+       diff, grep, spot-check)? Flag if it cannot.
+    2. AMBIGUOUS — one right answer or multiple defensible ones? Flag if
+       multiple.
+    3. BLAST — reversible? Touches money / auth / user data / production /
+       deletes? Flag if irreversible or sensitive.
+    4. CROSS-CUTTING — one file/source or reasoning across many? Flag if many.
+    5. NOVEL — pattern-following or genuinely new design? Flag if new design.
+    6. FORMAT-STRICT — output must match an exact schema/format? Flag if
+       free-form output fails.
+  Mapping: 0 flags → cheap. 1-2 flags → standard. 3+ flags or any
+  ownership/judgment call → frontier. Apex only when you can write one
+  sentence stating why the marginal intelligence pays for the cost.
+- THE OVERRIDE (single biggest cost lever): cheap-to-verify ⇒ cheap-to-
+  generate. If a unit's output can be verified mechanically, assign the
+  LOWEST tier regardless of how hard it looks, and let verification catch
+  failure. Only unverifiable work needs to START high. This is the
+  "generator–verifier gap."
+- FORMAT-STRICT still starts cheap (the "probe" principle — see section 4.3):
+  format-constrained work is verifiable, so it starts cheap and escalates on
+  failure. Do NOT preemptively route it to standard.
+
+- STEP 2 — Escalate exactly ONE tier when ANY of three objective triggers
+  fires:
+    1. Verification failure ×2 at the current tier.
+    2. Disagreement: for AMBIGUOUS-flagged work you want to keep cheap, run it
+       TWICE at the low tier. Agree → accept. Disagree → escalate. (Never
+       dual-run mechanical work — 2x cost, no information gained.)
+    3. Uncertainty flag: the worker tagged the item "uncertain."
+- RESIDUE-ONLY ESCALATION: the higher tier receives ONLY failed/uncertain
+  items plus verification notes. It resolves the residue; it never redoes the
+  batch.
+- HYSTERESIS: never de-escalate mid-task; max ONE retry per tier; everything
+  unresolved after the per-work ladder cap goes to a SINGLE batched apex
+  tie-break call (one call, all residual items) — never per-item apex calls.
+- Per-unit, not per-batch: one hard file doesn't drag 699 easy ones up a tier.
+
+2.3 Worked example (illustrative arithmetic, not a benchmark)
+- A 700-unit job: tag every file in a repo as "source" or "build artifact."
+  Almost all of it is mechanical and cheap-to-verify.
+- 690 units are cheap-verifiable → start on cheap. 10 touch auth/user data →
+  start on standard. Cheap fails ×2 on 6 of the 690 → escalate residue only
+  to standard. Nothing needs frontier; no apex call.
+- Illustrative: total ≈ $2.39 vs $14 all-standard vs $63 all-frontier.
+  IMPORTANT: these are illustrative round-trip prices, NOT measured. The real,
+  MEASURED numbers are in section 4 — use those for marketing, not this
+  hypothetical.
+
+================================================================================
+3. DIFFERENTIATION
+================================================================================
+
+3.1 vs "ask the model how confident it is" (naive routing)
+- Ours: objective triggers (failed verification, measured disagreement,
+  explicit uncertainty flag). Never threshold a self-reported confidence
+  number.
+
+3.2 vs "one model for everything" (status quo)
+- Ours: measured −31% to −96% cost on closed vendors at equal-or-better
+  quality (section 4). This is the headline.
+
+3.3 vs other routing tools (token-router, subagent-model-routing)
+- Ours: the full escalation loop + hysteresis + residue-only payload +
+  calibration loop + PUBLISHED, REPRODUCIBLE A/B RESULTS. We're the only one
+  of the three that can show it works with data.
+
+3.4 vs gateway/proxy tools (Edgee, compression proxies)
+- COMPOSE, don't compete: gateways compress what goes over the wire for a
+  given call. We decide WHICH model handles each unit of work. Route first,
+  compress second. We stack with them.
+
+3.5 Model-agnostic / vendor-agnostic (key differentiator, hard-won)
+- The rules are about WORK PROPERTIES (verifiable? ambiguous? blast?), not
+  about a specific model's known weaknesses. We deliberately avoid
+  "vendor cards" that would go stale as model cards change. This came from a
+  real, measured lesson (section 4.3: the formatStrict rule that worked on
+  Anthropic backfired on Gemini). This is a sellable robustness property:
+  "the skill can't go stale when model cards change."
+
+3.6 "Flags steer; verification + escalation decide" (robustness differentiator)
+- A stock dispatcher model reproduced only 90% of ground-truth rubric flags
+  (and only 60% on the tricky FORMAT-STRICT flag) yet still routed 100% of
+  units to the correct tier (measured, section 4.4). Implication: you do NOT
+  need a custom, hand-tuned flagging/classification model to get the benefit.
+  The escalator absorbs flagging noise. This is the property that makes it
+  deployable with a stock agent, not a research toy.
+
+================================================================================
+4. THE EVIDENCE (MEASURED — the heart of the marketing case)
+================================================================================
+
+4.0 Methodology (why it's defensible — use this framing everywhere)
+- The skill is a ROUTING POLICY, not an agent. Public benchmarks score a model
+  inside ONE fixed harness and cannot express a routing policy. (July 2026
+  arXiv position paper 2606.17799: the same model swings 15-20 points across
+  harnesses.) So the only honest test is a CONTROLLED A/B that holds the
+  harness fixed and varies only the routing policy.
+- Three properties make the results defensible:
+  1. VENDOR-CONSTANT: every arm is compared within a vendor (Anthropic-tiered
+     vs Anthropic-standard). Vendor quality differences never leak in.
+  2. DETERMINISTIC GRADERS, NEVER AN LLM JUDGE: code executed in a sandboxed
+     vm against hidden test cases; reasoning exact-match; mechanical JSON
+     schema. The grader is ground truth.
+  3. SEEDS: every arm runs 5 seeds at temperature > 0; reports pass rate +
+     cost across runs.
+- Arms: all-standard (the cheap status quo — one model, standard tier) vs
+  tiered (the skill, "probe" policy). Same tasks, same grader, only the
+  routing policy changes.
+
+4.1 Public benchmark 1 — GSM8K (math reasoning)
+- MIT-licensed, ungated, fetched live from HuggingFace at run time. Official
+  questions; we grade by extracting the final number from the official answer
+  (exact-match). 50 tasks × 5 seeds = 250 units per cell.
+- probe tiered vs all-standard:
+    OpenAI        all-standard 241/250  $0.60 | tiered 249/250  $0.17 | cost −71% | pass +8
+    Gemini        all-standard 250/250  $1.28 | tiered 248/250  $0.53 | cost −59% | pass −2 (seed noise)
+    Anthropic     all-standard 249/250  $0.36 | tiered 250/250  $0.35 | cost −4%  | pass +1
+    open-weights  all-standard 240/250  $0.02 | tiered 245/250  $0.07 | cost +228% (see caveat) | pass +5
+- Headline: "up to −71% on GSM8K at equal-or-better quality."
+
+4.2 Public benchmark 2 — HumanEval (Python code generation)
+- MIT-licensed, ungated. Graded by executing each solution against the
+  OFFICIAL HumanEval test cases in a python3 subprocess (8s timeout). 20
+  tasks × 5 seeds = 100 units per cell.
+- probe tiered vs all-standard:
+    Gemini        all-standard 100/100  $1.13 | tiered 100/100  $0.05 | cost −95% | pass =
+    Anthropic     all-standard 100/100  $0.30 | tiered 100/100  $0.12 | cost −61% | pass =
+    OpenAI        all-standard 100/100  $0.46 | tiered 100/100  $1.23 | NA*      | pass =
+    open-weights  all-standard 100/100  $0.01 | tiered 100/100  $0.02 | +77% (caveat) | pass =
+- NA* note for OpenAI: OpenAI's CHEAP tier (gpt-5-nano) cannot write Python,
+  so every task escalates the full cheap→standard→frontier→apex ladder.
+  Quality is still preserved (100/100 — the escalator works), but there is no
+  cost headroom to exploit on code for that family. IMPORTANT framing: this is
+  not "OpenAI has no Python model" (its standard/frontier tiers handle Python
+  fine). It is specifically that the CHEAPEST tier lacks the capability, so
+  routing has nothing to save. Frame as honesty, not weakness.
+- Headline: "up to −95% on HumanEval at identical pass rate."
+
+4.3 Synthetic suites (our own 30 tasks — use as SECONDARY evidence, and be
+    clear they're ours)
+- 10 code (sandboxed vm exec), 10 reasoning (exact-match), 10 mechanical
+  (JSON schema). 5 seeds, 150 units per cell.
+- probe tiered vs all-standard (cost / pass):
+    Anthropic   code −67% (50/50 =)  reasoning −72% (50/50 +5)  mechanical −66% (50/50 +10)
+    Gemini      code −96% (50/50 =)  reasoning −67% (50/50 =)  mechanical −93% (49/50 +1)
+    OpenAI      code −31% (50/50 =)  reasoning −76% (50/50 +4)  mechanical −54% (50/50 +5)
+    open-weights code +246% (caveat) reasoning +250% (caveat) mechanical +29% (caveat)
+- THE STORY HERE: tiered is never worse than all-standard on any suite, and it
+  is BETTER on 6 of 12 cells (the escalator recovers failures a fixed single
+  tier gives up on). This is a strong "it's not just cheaper, it's smarter"
+  narrative.
+
+4.4 Flagging reliability study (the "do I need a custom classifier?" answer)
+- The eval harness hand-assigns rubric flags. In production SKILL.md expects
+  the dispatching agent to score them. We tested: can a stock dispatcher model
+  reproduce them?
+- Haiku dispatcher: 90% flag agreement, 100% tier-match under probe.
+- Sonnet dispatcher: 93% agreement, 100% tier-match under probe.
+- The weak flag is formatStrict (60% — dispatchers over-flag any structured
+  answer), but under probe a wrong flag only changes the ladder CAP, never the
+  base tier, so the escalator absorbs it.
+- CONCLUSION TO SELL: "No custom flagging model required. Flags steer;
+  verification + escalation decide. A wrong flag costs at most one extra cheap
+  attempt — never a wrong answer or a big bill."
+
+4.5 Iteration history (shows rigor + that we didn't cherry-pick)
+- Round 1 baseline: tiered wins code; mechanical "death-spiral" found
+  (cheap bounces to apex on format tasks).
+- Round 2 formatStrict → standard base: kills the apex spiral; pass dips
+  (frontier was WORSE than standard on mechanical).
+- Round 3 formatStrict caps at standard: mechanical cheaper at equal pass.
+- Round 4 grader/task bug fixes (we found 3 of OUR OWN task bugs — a wrong
+  math answer key that was burning 87% of the reasoning budget "failing" a
+  task that actually passed, an under-specified sort prompt, a mis-keyed HTTP
+  method). Fixing them: reasoning 45→50, mechanical 44→50. This is a feature
+  of the harness (persistence + fail-set reporting made it visible), and an
+  honesty point: we caught and fixed our own instrumentation bugs publicly.
+- Round 5 probe policy (cheap-first + format-strict cap): wins or ties all
+  4 vendors × 3 suites. This is the SHIPPED policy.
+
+4.6 Caveats (MUST be stated — they're part of the credibility story)
+- Sample sizes are modest (50/20 tasks × 5 seeds). Direction is consistent
+  across 2 benchmarks × 4 model families; confidence intervals at higher
+  seeds are a follow-up.
+- open-weights price ladders INVERT: their "standard" tier can be cheaper
+  than their "cheap" tier, which flips the cost math (quality still equal).
+  Absolute overhead is tiny (~$0.01-0.02 per 150 units). This is a
+  documented, config-level fix (skip the cheap tier when cheap is not the
+  cheapest tier), not a fundamental flaw. Frame as "we're honest about the
+  one family where the assumption breaks."
+- Real workloads are messier than benchmarks and escalate more — real savings
+  land BELOW these numbers, not above. (Honest expectation-setting.)
+- OpenAI code is NA* (section 4.2).
+- These are LAB results on benchmarks. Cross-vendor consistency (3 of 4
+  families showing the same direction on both benchmarks) is the best evidence
+  so far that the principle carries to real workloads.
+
+================================================================================
+5. WHAT IT DOESN'T DO (honest boundaries — reduces credibility risk)
+================================================================================
+
+- NOT a proxy; does NOT enforce anything at the network layer.
+- NOT a gateway or compression proxy (Edgee etc.) — it COMPOSES with them:
+  route first, compress second.
+- Does NOT auto-flag in production — the dispatching agent scores the flags.
+  (But measured robust to flagging noise, section 4.4.)
+- Does NOT help when the cheapest tier lacks the capability entirely (e.g.,
+  OpenAI + Python code) — that's the NA* case, no headroom to save.
+- Does NOT replace the PLANNING tier decision — planning (decomposition,
+  judgment) is a separate decision from execution routing; the skill's
+  escalation ladder is for execution units.
+- Does NOT promise specific dollar savings on YOUR workload — savings are
+  workload-dependent; we publish measured ranges on benchmarks, not a
+  guarantee.
+- Is NOT an LLM-judge system — verification is mechanical/deterministic, and
+  where it can't be, re-derivation by an independent agent on a SAMPLE only.
+
+================================================================================
+6. TARGET CUSTOMERS / AUDIENCE / COMPANIES
+================================================================================
+
+6.1 Primary ICP (who actually pays / who feels the pain most)
+- Platform/DevEx engineers at companies running coding agents at scale
+  (Claude Code, Codex, Cursor, Copilot) — they own the token bill and the
+  "why is this so expensive" complaints.
+- AI-native startups and agent-building teams — token cost is a line item on
+  their COGS; unit economics matter. They build agents and need every dollar.
+- Engineering leaders / DevTools managers standardizing agent usage —
+  cost governance, spend control, "one policy for the team."
+- Individual power users hitting subscription tier ceilings / token caps —
+  the 93.8%-of-tokens-on-top-tier user.
+
+6.2 Secondary audience
+- Tooling builders (IDE extension authors, MCP server authors, agent
+  framework maintainers) who want routing as a building block.
+- Open-source developer-adjacent readers who value rigor (they're the
+  credibility multiplier that spreads it).
+- Enterprise procurement / platform teams evaluating "how do we govern agent
+  spend" — they need the vendor-agnostic, no-vendor-card property.
+
+6.3 Company archetypes (concrete examples of who this fits)
+- A startup running hundreds of Claude Code / Codex sessions/month across a
+  team, paying for Opus/Sonnet-class tokens on mechanical work.
+- A platform team standardizing coding-agent usage across 50+ developers.
+- An agency or services shop that resells agent-built work and must keep
+  margins up.
+- A solo power user on a top-tier subscription who wants to stretch tokens
+  (or avoid tier creep).
+(Do not name specific customers — there are none yet. Keep archetypes.)
+
+6.4 Positioning one-liners (test these)
+- "The cheapest model that can pass the check — every time."
+- "Stop paying top-tier prices for mechanical work."
+- "Model routing with receipts: measured −31% to −96% on public benchmarks."
+- "Escalation on evidence, not vibes."
+- "Flags steer. Verification decides. Your token bill thanks you."
+
+================================================================================
+7. TRIAL & TESTING APPROACH (how a user validates it — low friction)
+================================================================================
+
+- Free, MIT, open-source. Install via skills.sh:
+    npx skills add undercutsh/firstpass
+  or copy skills/tiered-dispatch/ into your agent's skills directory.
+- It works with ANY agent that reads a SKILL.md (Claude Code, Codex, Cursor,
+  Copilot, OpenCode).
+- Self-serve validation path (built, working, documented):
+    1. Read the published results (testing/README.md) and raw JSON
+       (testing/results/).
+    2. Reproduce for free in mock mode (no API key, no spend):
+       node src/main.js --mock
+    3. Run live on YOUR chosen vendor/benchmark with an OpenRouter key
+       (per-request billing; a full 4-vendor × 2-benchmark run is ~$4-5 total;
+       a single-vendor smoke is pennies).
+    4. Diff any two saved runs: node src/main.js --compare a.json b.json
+- Zero lock-in: it's a policy your agent follows; remove the skill and you're
+  back to status quo. Nothing installs, nothing proxies traffic.
+- The eval harness is part of the repo, so a prospective user can re-run our
+  exact methodology on their own tasks.
+
+================================================================================
+8. OPEN / GO-TO-MARKET APPROACH
+================================================================================
+
+- MIT license (maximally permissive — good for adoption, good for being
+  embedded in others' tooling).
+- Public repo with strong hygiene: CHANGELOG, semantic versioning, clean
+  branch→PR workflow, published raw results, published methodology.
+- Distributed via skills.sh (the skills registry for Claude Code / agents).
+- Vendor-agnostic by design — the tier→model mapping (models.md) is versioned
+  separately from routing logic, so mapping updates ship on their own cadence.
+  Roadmap: anchor the mapping to public benchmarks (SWE-bench Verified for
+  execution tiers, a general reasoning index for judgment tiers); when a new
+  model beats a tier's incumbent, an updated mapping ships as a release.
+- Published results are the moat and the trust mechanism: anyone can re-verify
+  any cell. This is unusual for a routing tool and is a differentiator.
+- Open collaboration angle: the eval harness is a reusable asset — teams can
+  run their OWN A/B on their OWN tasks and publish.
+
+================================================================================
+9. CREDIBILITY STRATEGY (how to present so skeptics trust it)
+================================================================================
+
+- Lead with the measurement, not the story: benchmark tables first.
+- Publish the raw data alongside the claims (we do — testing/results/).
+- State the caveats proactively (open-weights inversion, OpenAI code NA,
+  modest sample sizes). A reviewer who finds a caveat you already stated
+  trusts you more, not less.
+- Distinguish clearly between MEASURED results and ILLUSTRATIVE arithmetic
+  (the 700-unit example is illustrative; the benchmark tables are measured).
+- Don't overclaim "benchmark-grade" or cite a number in the skill description
+  as if it were guaranteed on your workload. Savings are workload-dependent.
+- The 93.8% anecdote must stay attributed as self-reported, single-user.
+- First independent replication (by a third party) would be the next big
+  credibility unlock; note it as a goal, don't claim it.
+
+================================================================================
+10. SUGGESTED LANDING PAGE STRUCTURE (informed by the above)
+================================================================================
+
+(For the copywriter — a suggested skeleton based on what we know converts and
+what we can honestly claim.)
+1. HERO — one-line hook + the measured proof right there: "up to −95% cost on
+   public benchmarks, equal-or-better quality."
+2. THE PROBLEM — agents route everything to the most expensive model; the
+   obvious fix (self-reported confidence) doesn't work. Cite the anecdote
+   WITH attribution.
+3. THE PROOF — the GSM8K and HumanEval tables (measured, official test
+   cases, vendor-constant). Link to raw data.
+4. HOW IT WORKS — the rubric (6 flags), the ladder, the escalation triggers,
+   the residue-only handoff. Diagrams > prose.
+5. WHY IT'S ROBUST — flags steer, verification decides; no custom classifier
+   needed; vendor-agnostic so it can't go stale.
+6. WHAT IT DOESN'T DO / HONEST LIMITS — the caveats section (this is the
+   trust-builder).
+7. INSTALL + TRY IT — skills.sh, mock mode (free), live repro.
+8. PRIOR ART + WHAT'S NEW — honest positioning.
+9. FOOTER — MIT, GitHub, roadmap.
+
+================================================================================
+11. KEY DATA POINTS AT A GLANCE (copy-and-paste safe list)
+================================================================================
+
+MEASURED HEADLINES
+- Up to −71% cost on GSM8K (OpenAI), equal-or-better pass (+8 correct).
+- Up to −95% cost on HumanEval (Gemini), identical pass rate.
+- Anthropic: −61% on HumanEval, −67% to −72% on synthetic suites.
+- Gemini: −96% on synthetic code, −93% on synthetic mechanical.
+- Tiered never worse than all-standard on any synthetic cell; better on 6/12.
+- 2 benchmarks × 4 model families; closed-vendor cells all show cost savings.
+- Stock dispatcher: 90% flag agreement → 100% correct routing (probe).
+- No custom flagging/classification model required.
+
+CONTEXT NUMBERS (attribute carefully)
+- One Claude Code Max user's self-reported data: 93.8% of tokens to top tier
+  (anthropics/claude-code#27665). Self-reported, single user.
+- July 2026 arXiv 2606.17799: same model swings 15-20 points across harnesses.
+
+CAVEATS (state these)
+- Modest sample sizes (50/20 tasks × 5 seeds).
+- open-weights price-ladder inversion flips cost math (quality still equal).
+- OpenAI code = NA* (cheap tier lacks Python; quality preserved, no savings).
+- Real workloads save less than benchmarks.
+
+================================================================================
+12. RAW DATA LOCATIONS (for verification / linking)
+================================================================================
+
+- Testing summary + full tables: repo testing/README.md
+- Raw JSON results (12 canonical runs): repo testing/results/
+- Eval harness + benchmark loaders: repo evals/ (src/main.js, src/policy.js,
+  src/benchmarks.js, src/flagtest.js)
+- Benchmarks fetched live from HuggingFace: openai/gsm8k,
+  openai/openai_humaneval (both MIT, ungated)
+- Skill itself: repo skills/tiered-dispatch/SKILL.md + models.md
+- Installed/consumer copy: ~/.claude/skills/tiered-dispatch/
+
+================================================================================
+END OF RESEARCH DUMP
+================================================================================
