@@ -176,10 +176,16 @@ function printReport(results, { vendors, arms, suites, seeds, mock, policyVersio
   console.log(`RESULTS (policy ${policyVersion})`);
   console.log('='.repeat(72));
 
+  // retries per unit = repeat attempts at the SAME tier (hysteresis retry).
+  const retriesOf = (u) => {
+    if (!u.attemptLog?.length) return 0;
+    return u.attemptLog.length - new Set(u.attemptLog.map((a) => a.tier)).size;
+  };
+
   for (const vendor of vendors) {
     for (const suite of suites) {
       console.log(`\n── ${vendor} / ${suite} ──`);
-      console.log(`${'arm'.padEnd(14)}${'pass'.padEnd(8)}${'cost$'.padEnd(10)}${'$/pass'.padEnd(10)}${'tokens'.padEnd(10)}${'esc%'.padEnd(6)}apex`);
+      console.log(`${'arm'.padEnd(14)}${'pass'.padEnd(8)}${'cost$'.padEnd(10)}${'$/pass'.padEnd(10)}${'tokens'.padEnd(10)}${'esc%'.padEnd(6)}${'apex'.padEnd(5)}retr`);
       for (const arm of arms) {
         const units = results[vendor][arm][suite];
         const n = units.length;
@@ -188,11 +194,13 @@ function printReport(results, { vendors, arms, suites, seeds, mock, policyVersio
         const tok = units.reduce((s, u) => s + u.tokensIn + u.tokensOut, 0);
         const esc = units.filter((u) => u.escalated).length;
         const apex = units.filter((u) => u.apexResolved).length;
+        const retr = units.reduce((s, u) => s + retriesOf(u), 0);
         const perPass = passes ? (cost / passes).toFixed(4) : '∞';
         console.log(
-          `${arm.padEnd(14)}${`${passes}/${n}`.padEnd(8)}${cost.toFixed(4).padEnd(10)}${perPass.padEnd(10)}${String(tok).padEnd(10)}${`${((esc / n) * 100).toFixed(0)}%`.padEnd(6)}${apex}`
+          `${arm.padEnd(14)}${`${passes}/${n}`.padEnd(8)}${cost.toFixed(4).padEnd(10)}${perPass.padEnd(10)}${String(tok).padEnd(10)}${`${((esc / n) * 100).toFixed(0)}%`.padEnd(6)}${String(apex).padEnd(5)}${retr}`
         );
       }
+      printTaskDetail(results, vendor, suite, arms, retriesOf);
     }
   }
 
@@ -230,6 +238,41 @@ function printReport(results, { vendors, arms, suites, seeds, mock, policyVersio
   }
 
   console.log(`\n${mock ? 'MOCK' : 'LIVE'} · ${seeds} seed(s) · ${new Date().toISOString()}`);
+}
+
+/**
+ * Per-task mechanics table for the tiered arm: what tier each task STARTED
+ * on, the escalation path it took (in order, including apex resolution),
+ * retries (repeat attempts at the same tier), final tier, pass rate across
+ * seeds, and cost. Shows HOW the router got to its answer.
+ */
+function printTaskDetail(results, vendor, suite, arms, retriesOf) {
+  if (!arms.includes('tiered')) return;
+  const units = results[vendor]?.tiered?.[suite];
+  if (!units?.length) return;
+
+  // Group by task id; within a task, take the LAST seed's trace as the
+  // representative path (richest — includes apex resolution when it happened).
+  const byTask = new Map();
+  for (const u of units) {
+    if (!byTask.has(u.id)) byTask.set(u.id, []);
+    byTask.get(u.id).push(u);
+  }
+
+  console.log(`\n  tiered per-task mechanics (${byTask.size} tasks)`);
+  console.log(`  ${'task'.padEnd(26)}${'start'.padEnd(8)}${'path'.padEnd(34)}${'retr'.padEnd(5)}${'final'.padEnd(9)}${'pass%'.padEnd(6)}cost$`);
+  for (const [id, us] of byTask) {
+    const last = us[us.length - 1];
+    const start = last.tiersUsed[0] ?? '—';
+    const path = last.attemptLog.map((a) => a.tier).join('→');
+    const retr = retriesOf(last);
+    const final = last.finalTier ?? '—';
+    const passPct = Math.round((us.filter((u) => u.passed).length / us.length) * 100);
+    const cost = us.reduce((s, u) => s + u.cost, 0);
+    console.log(
+      `  ${id.padEnd(26)}${start.padEnd(8)}${path.padEnd(34)}${String(retr).padEnd(5)}${final.padEnd(9)}${`${passPct}%`.padEnd(6)}${cost.toFixed(4)}`
+    );
+  }
 }
 
 /**
