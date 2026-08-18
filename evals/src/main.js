@@ -12,6 +12,7 @@ import { runFlagTest, printFlagReport } from './flagtest.js';
 import { codeSuite } from './suites/code.js';
 import { reasoningSuite } from './suites/reasoning.js';
 import { mechanicalSuite } from './suites/mechanical.js';
+import { loadGsm8k, loadHumanEval } from './benchmarks.js';
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 
@@ -19,7 +20,7 @@ const SUITES = { code: codeSuite, reasoning: reasoningSuite, mechanical: mechani
 const RESULTS_DIR = path.join(import.meta.dirname, '..', 'results');
 
 function parseArgs(argv) {
-  const a = { smoke: false, verifyOnly: false, mock: false, flagtest: false, seeds: null, vendors: null, arms: null, suites: null, policy: 'latest', compare: null, baseline: null, dispatcher: 'cheap' };
+  const a = { smoke: false, verifyOnly: false, mock: false, flagtest: false, seeds: null, vendors: null, arms: null, suites: null, policy: 'latest', compare: null, baseline: null, dispatcher: 'cheap', benchmark: null };
   for (let i = 0; i < argv.length; i++) {
     switch (argv[i]) {
       case '--smoke': a.smoke = true; break;
@@ -35,6 +36,7 @@ function parseArgs(argv) {
       case '--compare': a.compare = argv[++i]; break;
       case '--baseline': a.baseline = argv[++i]; break;
       case '--dispatcher': a.dispatcher = argv[++i]; break;
+      case '--benchmark': a.benchmark = argv[++i].split(','); break;
     }
   }
   return a;
@@ -109,7 +111,21 @@ async function main() {
 
   const vendors = args.vendors ? args.vendors : Object.keys(VENDORS);
   const arms = args.arms ? args.arms : Object.keys(ARMS);
-  const suites = args.suites ? args.suites : Object.keys(SUITES);
+
+  // --benchmark: load public benchmark suites (GSM8K reasoning, HumanEval
+  // code) into the suite set. They replace/join the built-in suites.
+  let benchmarkSuites = null;
+  if (args.benchmark) {
+    benchmarkSuites = {};
+    for (const name of args.benchmark) {
+      if (name === 'gsm8k') benchmarkSuites.gsm8k = await loadGsm8k(50);
+      else if (name === 'humaneval') benchmarkSuites.humaneval = await loadHumanEval(20);
+      else throw new Error(`unknown benchmark: ${name} (use gsm8k or humaneval)`);
+    }
+    console.log(`  benchmarks: ${Object.keys(benchmarkSuites).map((k) => `${k} (${benchmarkSuites[k].length} tasks)`).join(', ')}`);
+  }
+  const suiteMap = benchmarkSuites ?? SUITES;
+  const suites = args.suites ? args.suites : Object.keys(suiteMap);
   const seeds = args.smoke ? 1 : args.seeds ?? DEFAULT_SEEDS;
 
   // Smoke test = plumbing proof, not results. 1 seed, 1 vendor, 1 suite,
@@ -156,12 +172,12 @@ async function main() {
           : makeAttempter({ model: VENDORS[vendor], runMeta: { temperature: 0.2 }, policy });
         const apexChat = args.mock
           ? mockApex((id) => {
-              const t = SUITES[suite].find((x) => x.id === id);
+              const t = suiteMap[suite].find((x) => x.id === id);
               return t ? t.answerKey : null;
             })
           : chat;
         const units = await runSuite({
-          arm, vendor, suite: SUITES[suite], attempt,
+          arm, vendor, suite: suiteMap[suite], attempt,
           apexChat,
           apexModel: VENDORS[vendor].tiers.apex,
           seeds,

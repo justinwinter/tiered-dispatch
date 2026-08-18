@@ -6,3 +6,7 @@ evals/results/*.json
 # local tool artifacts
 .lcm/
 .evs/
+
+# internal commercialization docs
+PRD.md
+landing-page.md

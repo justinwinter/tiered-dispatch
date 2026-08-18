@@ -32,7 +32,7 @@ export function makeAttempter({ model, runMeta, policy }) {
     const system = 'You are a worker in a tiered-dispatch pipeline. Follow the output contract exactly.';
     const res = await chat(slug, system, policy.workerPrompt(task, payload), { temperature: runMeta.temperature });
     const parsed = parseWorkerOutput(res.content);
-    const verdict = task.grader(parsed.answer);
+    const verdict = await task.grader(parsed.answer);
     return {
       answer: parsed.answer,
       status: parsed.status,
@@ -100,7 +100,7 @@ export async function runSuite({ arm, vendor, suite, attempt, apexChat, apexMode
           if (u.needsApex && byId.has(u.id)) {
             const answer = byId.get(u.id);
             const task = suite.find((t) => t.id === u.id);
-            const verdict = task.grader(answer);
+            const verdict = await task.grader(answer);
             u.attemptLog.push({
               tier: 'apex',
               answer,
@@ -225,7 +225,7 @@ export function mockAttempter({ alwaysPass = false } = {}) {
         answer,
         status: 'grounded',
         uncertaintyReason: null,
-        verdict: task.grader(answer),
+        verdict: await task.grader(answer),
         cost: 0.001,
         usage: { in: 100, out: 50, costUsd: 0.001 },
       };
@@ -238,7 +238,7 @@ export function mockAttempter({ alwaysPass = false } = {}) {
       answer,
       status: 'grounded',
       uncertaintyReason: null,
-      verdict: task.grader(answer),
+      verdict: await task.grader(answer),
       cost: 0.001,
       usage: { in: 100, out: 50, costUsd: 0.001 },
     };
