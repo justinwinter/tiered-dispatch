@@ -356,7 +356,7 @@
   </div>
 </section>
 
-<section data-screen-label="FAQ" style="padding: 88px 32px; border-bottom: 1px solid #DFDAD0">
+<section id="faq" data-screen-label="FAQ" style="padding: 88px 32px; border-bottom: 1px solid #DFDAD0">
   <div style="max-width: 880px; margin: 0 auto">
     <h2 style="font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 28px; letter-spacing: -0.02em; margin: 0 0 28px">FAQ</h2>
     <sc-for list="{{ faqs }}" as="faq" hint-placeholder-count="5">
@@ -380,37 +380,49 @@
   </div>
 </section>
 
-<footer data-screen-label="Footer" style="padding: 64px 32px 48px">
+<footer aria-labelledby="footer-heading" style="padding: 64px 32px 44px">
+  <h2 id="footer-heading" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Footer</h2>
   <div style="max-width: 1160px; margin: 0 auto">
     <div style="display: flex; justify-content: space-between; gap: 48px; flex-wrap: wrap; margin: 0 0 48px">
-      <div>
-        <div style="font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 17px; margin: 0 0 10px">undercut</div>
-        <p style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #8A8F98; margin: 0">MIT License · <a href="https://github.com/undercutsh/firstpass" style="color: #8A8F98">github.com/undercutsh/firstpass</a></p>
+      <div style="max-width: 260px">
+        <a href="#top" style="text-decoration: none; font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 17px; color: #15171C">undercut</a>
+        <p style="font-size: 13.5px; line-height: 1.6; color: #4a4e57; margin: 12px 0 14px">Runs every unit of work at the cheapest model that can pass verification. Escalate on evidence, not vibes.</p>
+        <p style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #8A8F98; margin: 0 0 4px">MIT License</p>
+        <p style="font-size: 12px; color: #4a4e57; margin: 0">Built and maintained by <a href="https://iamjustinwinter.com" style="color: #15171C">Justin Winter</a> · <a href="https://github.com/justinwinter" style="color: #15171C">GitHub</a></p>
       </div>
-      <div style="display: flex; gap: 72px; flex-wrap: wrap; font-size: 14px">
-        <div style="display: grid; gap: 10px; align-content: start">
-          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #8A8F98">Product</span>
+      <div style="display: flex; gap: 56px; flex-wrap: wrap; font-size: 14px">
+        <nav aria-label="Product" style="display: grid; gap: 10px; align-content: start">
+          <h3 style="font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #8A8F98; margin: 0">Product</h3>
           <a href="#how" style="text-decoration: none; color: #4a4e57">How it works</a>
-          <a href="#install" style="text-decoration: none; color: #4a4e57">Install</a>
-          <a href="#top" style="text-decoration: none; color: #4a4e57">Who it's for</a>
-        </div>
-        <div style="display: grid; gap: 10px; align-content: start">
-          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #8A8F98">Proof</span>
           <a href="#benchmarks" style="text-decoration: none; color: #4a4e57">Benchmarks</a>
+          <a href="#install" style="text-decoration: none; color: #4a4e57">Install</a>
+          <a href="#faq" style="text-decoration: none; color: #4a4e57">FAQ</a>
+        </nav>
+        <nav aria-label="Proof" style="display: grid; gap: 10px; align-content: start">
+          <h3 style="font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #8A8F98; margin: 0">Proof</h3>
           <a href="https://github.com/undercutsh/firstpass/tree/main/testing/results" style="text-decoration: none; color: #4a4e57">Raw results</a>
           <a href="https://github.com/undercutsh/firstpass/blob/main/testing/README.md" style="text-decoration: none; color: #4a4e57">Methodology</a>
-        </div>
-        <div style="display: grid; gap: 10px; align-content: start">
-          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #8A8F98">Repo</span>
+          <a href="https://github.com/undercutsh/firstpass/tree/main/evals" style="text-decoration: none; color: #4a4e57">Eval harness</a>
+          <a href="https://github.com/undercutsh/firstpass/blob/main/testing/README.md" style="text-decoration: none; color: #4a4e57">Flagging study</a>
+        </nav>
+        <nav aria-label="Repository" style="display: grid; gap: 10px; align-content: start">
+          <h3 style="font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #8A8F98; margin: 0">Repository</h3>
           <a href="https://github.com/undercutsh/firstpass" style="text-decoration: none; color: #4a4e57">GitHub</a>
-          <a href="https://github.com/undercutsh/firstpass/releases" style="text-decoration: none; color: #4a4e57">Changelog</a>
+          <a href="https://github.com/undercutsh/firstpass/releases" style="text-decoration: none; color: #4a4e57">Releases</a>
           <a href="https://github.com/undercutsh/firstpass/issues" style="text-decoration: none; color: #4a4e57">Issues</a>
-        </div>
+          <a href="https://github.com/undercutsh/firstpass/blob/main/LICENSE" style="text-decoration: none; color: #4a4e57">License</a>
+        </nav>
       </div>
     </div>
-    <div style="border-top: 1px solid #DFDAD0; padding-top: 24px; display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; font-size: 12.5px; color: #8A8F98">
-      <span style="font-family: 'JetBrains Mono', monospace">Works with: Claude Code · Codex · Cursor · Copilot · OpenCode</span>
-      <span>Open source, MIT licensed. Undercut the top tier, never the quality bar.</span>
+    <div style="border-top: 1px solid #DFDAD0; padding-top: 22px; display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; font-size: 12.5px; color: #8A8F98">
+      <span style="display: flex; gap: 18px; flex-wrap: wrap; align-items: baseline">
+        <span style="font-family: 'JetBrains Mono', monospace">© {{ copyrightYear }} Undercut · MIT</span>
+        <span style="font-family: 'JetBrains Mono', monospace">Works with: Claude Code · Codex · Cursor · Copilot · OpenCode</span>
+      </span>
+      <span style="display: flex; gap: 18px; flex-wrap: wrap">
+        <a href="https://github.com/undercutsh/firstpass/blob/main/testing/README.md" style="color: #8A8F98; text-decoration: none">Benchmark data</a>
+        <a href="https://github.com/undercutsh/firstpass/blob/main/CHANGELOG.md" style="color: #8A8F98; text-decoration: none">Changelog</a>
+      </span>
     </div>
   </div>
 </footer>
@@ -430,6 +442,7 @@ class Component extends DCLogic {
     const c = this.state.copied;
     return {
       copyInstall: copy,
+      copyrightYear: new Date().getFullYear(),
       navCopyLabel: c ? 'Copied' : 'Install',
       heroCopyLabel: c ? 'Copied ✓' : 'Install',
       blockCopyLabel: c ? 'Copied ✓' : 'Copy',
