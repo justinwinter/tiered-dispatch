@@ -9,7 +9,6 @@
 
 import { chat } from './llm.js';
 import { VENDORS, TIER_ORDER, MAX_ATTEMPTS_PER_UNIT } from './config.js';
-import { workerPrompt, baseTier, runUnitLadder, runUnitDual, buildPayload } from './policy.js';
 import { extractJson } from './tasks.js';
 import { WORKER_CONTRACT } from './types.js';
 
@@ -27,11 +26,11 @@ function parseWorkerOutput(text) {
 }
 
 /** A single attempt at a given tier. Returns structured result + cost. */
-export function makeAttempter({ model, runMeta }) {
+export function makeAttempter({ model, runMeta, policy }) {
   return async (tier, task, payload) => {
     const slug = model.tiers[tier];
     const system = 'You are a worker in a tiered-dispatch pipeline. Follow the output contract exactly.';
-    const res = await chat(slug, system, workerPrompt(task, payload), { temperature: runMeta.temperature });
+    const res = await chat(slug, system, policy.workerPrompt(task, payload), { temperature: runMeta.temperature });
     const parsed = parseWorkerOutput(res.content);
     const verdict = task.grader(parsed.answer);
     return {
@@ -83,11 +82,11 @@ export async function mapLimit(items, limit, fn) {
 }
 
 /** Run a whole suite under a given arm. */
-export async function runSuite({ arm, vendor, suite, attempt, apexChat, apexModel, seeds = 1, concurrency = 8 }) {
+export async function runSuite({ arm, vendor, suite, attempt, apexChat, apexModel, seeds = 1, concurrency = 8, policy }) {
   const perUnit = [];
   for (let seed = 0; seed < seeds; seed++) {
     // Run all tasks in the seed concurrently (bounded) — the dominant speedup.
-    const seedUnits = await mapLimit(suite, concurrency, (task) => runUnitForArm(arm, task, attempt));
+    const seedUnits = await mapLimit(suite, concurrency, (task) => runUnitForArm(arm, task, attempt, policy));
     // Batched apex: one call resolving ALL residual items across the suite.
     if (arm === 'tiered' && apexChat) {
       const residual = [];
@@ -133,21 +132,21 @@ function recomputeCost(u) {
   u.tokensOut = u.attemptLog.reduce((s, a) => s + (a.usage?.out ?? 0), 0);
 }
 
-async function runUnitForArm(arm, task, attempt) {
+async function runUnitForArm(arm, task, attempt, policy) {
   if (arm === 'tiered') {
     // Ambiguous cheap work: dual-run disagreement. Otherwise straight ladder.
-    if (task.flags.ambiguous && baseTier(task) === 'cheap') {
-      const dual = await runUnitDual(task, attempt);
-      if (!dual.escalated) return summarize(task, dual);
+    if (task.flags.ambiguous && policy.baseTier(task) === 'cheap') {
+      const dual = await policy.runUnitDual(task, attempt);
+      if (!dual.escalated) return summarize(task, dual, policy);
       // disagree → continue the ladder from standard
-      const rest = await runUnitLadder(task, async (tier, t, p) => {
+      const rest = await policy.runUnitLadder(task, async (tier, t, p) => {
         if (tier === 'cheap') return { answer: null, status: 'uncertain', uncertaintyReason: 'disagreement', verdict: { pass: false, reason: 'dual-run disagree' }, cost: 0, usage: {} };
         return attempt(tier, t, p);
       });
-      return summarize(task, { attempts: [...dual.attempts, ...rest.attempts], finalTier: rest.finalTier, escalated: rest.escalated, needsApex: rest.needsApex, apexPayload: rest.apexPayload });
+      return summarize(task, { attempts: [...dual.attempts, ...rest.attempts], finalTier: rest.finalTier, escalated: rest.escalated, needsApex: rest.needsApex, apexPayload: rest.apexPayload }, policy);
     }
-    const trace = await runUnitLadder(task, attempt);
-    return summarize(task, trace);
+    const trace = await policy.runUnitLadder(task, attempt);
+    return summarize(task, trace, policy);
   }
 
   // Baseline arms: same unit, single tier, no escalation.
@@ -158,10 +157,10 @@ async function runUnitForArm(arm, task, attempt) {
     trace.attempts.push({ ...r, tier });
     if (r.verdict.pass) { trace.finalTier = tier; break; }
   }
-  return summarize(task, trace);
+  return summarize(task, trace, policy);
 }
 
-function summarize(task, trace) {
+function summarize(task, trace, policy) {
   const passed = trace.attempts.some((a) => a.verdict.pass);
   const cost = trace.attempts.reduce((s, a) => s + (a.cost ?? 0), 0);
   const tokensIn = trace.attempts.reduce((s, a) => s + (a.usage?.in ?? 0), 0);
@@ -182,7 +181,7 @@ function summarize(task, trace) {
     escalated: trace.escalated,
     needsApex: trace.needsApex,
     apexResolved: false,
-    apexPayload: trace.apexPayload ?? buildPayload(task, trace.attempts),
+    apexPayload: trace.apexPayload ?? policy.buildPayload(task, trace.attempts),
     reason: trace.attempts[trace.attempts.length - 1]?.verdict.reason ?? '',
   };
 }

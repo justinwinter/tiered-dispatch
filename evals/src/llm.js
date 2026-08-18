@@ -88,7 +88,7 @@ async function rawCall(model, messages, { temperature = 0.2, maxTokens = 2048 })
         usage: {
           in: usage.prompt_tokens || 0,
           out: usage.completion_tokens || 0,
-          costUsd: usage.total_cost ?? null, // OpenRouter includes this when available
+          costUsd: usage.total_cost ?? usage.cost ?? null, // OpenRouter uses `cost` on this endpoint
         },
       };
     } catch (e) {

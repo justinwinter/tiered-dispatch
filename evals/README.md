@@ -55,13 +55,40 @@ OPENROUTER_API_KEY=sk-or-... node src/main.js --verify-only
 # smoke test: 1 seed, all vendors/arms/suites
 OPENROUTER_API_KEY=sk-or-... node src/main.js --smoke
 
-# full run
+# full run (saves results/run-*.json)
 OPENROUTER_API_KEY=sk-or-... node src/main.js
+
+# full run with a specific policy version
+OPENROUTER_API_KEY=sk-or-... node src/main.js --policy latest
+
+# iterate cheaply: reuse a saved all-standard baseline (it never changes
+# between policy versions), run only the tiered arm
+OPENROUTER_API_KEY=sk-or-... node src/main.js --arms tiered --baseline <saved-run.json>
+
+# compare two saved runs (policy versions, or before/after)
+node src/main.js --compare <run-a.json>,<run-b.json>
 ```
 
 Flags: `--vendors anthropic,openai,gemini,openweights`,
 `--arms all-frontier,all-standard,tiered`, `--suites code,reasoning,mechanical`,
-`--seeds N`.
+`--seeds N`, `--policy v1|latest`, `--baseline <file>`, `--compare a,b`,
+`--concurrency N`.
+
+### Policy versions
+
+The policy engine is versioned so the harness can A/B the current policy
+against the original v1 — the cross-vendor "does the principle carry over?"
+test:
+
+| Version | Behavior |
+|---|---|
+| `v1` | original rubric: any mechanically verifiable task starts cheap; ladder caps at frontier |
+| `latest` | round 1–3 findings: `formatStrict` tasks start at standard and cap at standard (frontier is *worse* on format-constrained output) |
+
+Every live run persists a JSON snapshot to `evals/results/` (gitignored).
+`--compare` diffs two snapshots (pass/cost/`$/pass` per vendor·arm·suite)
+without re-running — this is how iteration rounds are diffed against the
+baseline.
 
 ## Task suites
 

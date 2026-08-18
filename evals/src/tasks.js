@@ -24,6 +24,7 @@ export function makeTask({ id, category, prompt, flags, answerKey, grader }) {
       blast: false,
       crossCutting: false,
       novel: false,
+      formatStrict: false,
       ...flags,
     },
     answerKey,
