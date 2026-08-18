@@ -8,6 +8,7 @@ import { VENDORS, ARMS, DEFAULT_SEEDS, TIER_ORDER } from './config.js';
 import { hasKey, verifyModels, chat } from './llm.js';
 import { runSuite, makeAttempter, mockAttempter, mockApex } from './runner.js';
 import { createPolicy } from './policy.js';
+import { runFlagTest, printFlagReport } from './flagtest.js';
 import { codeSuite } from './suites/code.js';
 import { reasoningSuite } from './suites/reasoning.js';
 import { mechanicalSuite } from './suites/mechanical.js';
@@ -18,12 +19,13 @@ const SUITES = { code: codeSuite, reasoning: reasoningSuite, mechanical: mechani
 const RESULTS_DIR = path.join(import.meta.dirname, '..', 'results');
 
 function parseArgs(argv) {
-  const a = { smoke: false, verifyOnly: false, mock: false, seeds: null, vendors: null, arms: null, suites: null, policy: 'latest', compare: null, baseline: null };
+  const a = { smoke: false, verifyOnly: false, mock: false, flagtest: false, seeds: null, vendors: null, arms: null, suites: null, policy: 'latest', compare: null, baseline: null, dispatcher: 'cheap' };
   for (let i = 0; i < argv.length; i++) {
     switch (argv[i]) {
       case '--smoke': a.smoke = true; break;
       case '--verify-only': a.verifyOnly = true; break;
       case '--mock': a.mock = true; break;
+      case '--flagtest': a.flagtest = true; break;
       case '--seeds': a.seeds = Number(argv[++i]); break;
       case '--vendors': a.vendors = argv[++i].split(','); break;
       case '--arms': a.arms = argv[++i].split(','); break;
@@ -32,6 +34,7 @@ function parseArgs(argv) {
       case '--policy': a.policy = argv[++i]; break;
       case '--compare': a.compare = argv[++i]; break;
       case '--baseline': a.baseline = argv[++i]; break;
+      case '--dispatcher': a.dispatcher = argv[++i]; break;
     }
   }
   return a;
@@ -59,6 +62,20 @@ async function main() {
   if (args.compare) {
     const [a, b] = args.compare.split(',').map((f) => loadResults(f.trim()));
     printComparison(a, b);
+    return;
+  }
+
+  // --flagtest: measure how reliably a dispatcher model reproduces ground-truth
+  // rubric flags, and whether its flags route to the same base tier.
+  if (args.flagtest) {
+    if (!hasKey()) {
+      console.error('Set OPENROUTER_API_KEY first (flagtest runs live dispatcher calls).');
+      process.exit(1);
+    }
+    const suites = args.suites ? args.suites.map((s) => SUITES[s]) : Object.values(SUITES);
+    const dispatcher = args.dispatcher === 'cheap' ? VENDORS.anthropic.tiers.cheap : args.dispatcher;
+    const result = await runFlagTest({ dispatcher, suites, policyVersion: args.policy });
+    printFlagReport(result);
     return;
   }
 
